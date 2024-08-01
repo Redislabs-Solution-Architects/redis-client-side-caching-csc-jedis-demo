@@ -1,0 +1,43 @@
+<dependencies>
+    <!-- Jedis -->
+    <dependency>
+        <groupId>redis.clients</groupId>
+        <artifactId>jedis</artifactId>
+        <version>5.2.0-beta2</version>
+    </dependency>
+
+    <!-- Guava -->
+    <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>32.1.2-jre</version>
+    </dependency>
+
+    <!-- SLF4J API -->
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>1.7.36</version>
+    </dependency>
+
+    <!-- SLF4J Log4j binding -->
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-log4j12</artifactId>
+        <version>1.7.36</version>
+    </dependency>
+
+    <!-- Log4j -->
+    <dependency>
+        <groupId>log4j</groupId>
+        <artifactId>log4j</artifactId>
+        <version>1.2.17</version>
+    </dependency>
+
+    <!-- JSON handling -->
+    <dependency>
+        <groupId>org.json</groupId>
+        <artifactId>json</artifactId>
+        <version>20240303</version>
+    </dependency>
+</dependencies>
