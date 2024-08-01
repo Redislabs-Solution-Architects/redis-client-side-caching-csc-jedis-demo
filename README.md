@@ -23,7 +23,7 @@ These instructions will help you set up and run the project on your local machin
 
 Clone the repository:
 ```shell
-git clone https://github.com/yourusername/gabs-jedis-client-side-caching-redis.git
+git clone https://github.com/Redislabs-Solution-Architects/gabs-jedis-client-side-caching-redis.git
 cd gabs-jedis-client-side-caching-redis
 ```
 
