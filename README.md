@@ -39,6 +39,12 @@ Run the application:
 mvn exec:java -Dexec.mainClass="io.platformengineer.Main"
 ```
 
+If you want to run the jar itself (I like this because it's easy for "dockerization" later):
+```shell
+mvn clean package
+java -jar target/gabs-jedis-client-side-caching-redis-0.1.0-gabs-jar-with-dependencies.jar
+```
+
 Observe the output:
 
 The application will execute various Redis commands and log latency improvements achieved with client-side caching.
