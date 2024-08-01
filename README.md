@@ -19,3 +19,35 @@ These instructions will help you set up and run the project on your local machin
 - Maven for dependency management
 - Redis running locally on port 6379
 
+## Installation
+
+Clone the repository:
+```shell
+git clone https://github.com/yourusername/gabs-jedis-client-side-caching-redis.git
+cd gabs-jedis-client-side-caching-redis
+```
+
+Install dependencies:
+```shell
+mvn clean install
+```
+
+## Usage
+
+Run the application:
+```shell
+mvn exec:java -Dexec.mainClass="io.platformengineer.Main"
+```
+
+Observe the output:
+
+The application will execute various Redis commands and log latency improvements achieved with client-side caching.
+
+```shell
+INFO  Testing simple SET/GET operations...
+INFO  SET command duration (no cache): 120000 ns
+INFO  GET command duration (server): 50000 ns, value: bar
+INFO  GET command duration (cache hit): 5000 ns, value: bar
+INFO  GET operation latency improvement: 45000 ns (90.00%)
+...
+```
