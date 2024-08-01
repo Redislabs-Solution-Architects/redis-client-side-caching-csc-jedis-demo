@@ -42,7 +42,7 @@ mvn exec:java -Dexec.mainClass="io.platformengineer.Main"
 If you want to run the jar itself (I like this because it's easy for "dockerization" later):
 ```shell
 mvn clean package
-java -jar target/gabs-jedis-client-side-caching-redis-0.1.0-gabs-jar-with-dependencies.jar
+java -jar target/jedis-client-side-caching-redis-0.1.0-gabs-jar-with-dependencies.jar
 ```
 
 Observe the output:
@@ -56,6 +56,30 @@ INFO  GET command duration (server): 50000 ns, value: bar
 INFO  GET command duration (cache hit): 5000 ns, value: bar
 INFO  GET operation latency improvement: 45000 ns (90.00%)
 ...
+```
+
+## Docker Image
+
+The Docker image is available on Docker Hub and can be run with customizable Redis connection details.
+
+I will automate the CI/CD with Harness, ok? Just asking for some free-tier license there with my friends.
+
+### Prerequisites
+- Docker must be installed on your system.
+- You need access to a running Redis instance.
+
+### Running the Docker Container
+
+To run the Docker container, you need to specify the Redis connection details using environment variables. The container will connect to your specified Redis instance.
+
+#### Command to Run the Container
+
+```shell
+docker run --rm \
+  -e REDIS_HOST=host.docker.internal \  # Set the Redis host (default: localhost)
+  -e REDIS_PORT=6379 \  # Set the Redis port (default: 6379)
+  [-e REDIS_PASSWORD=your-password] \  # Optional: Set the Redis password if required
+  gacerioni/jedis-client-side-caching-redis:0.1.0-gabs
 ```
 
 ## Key Components

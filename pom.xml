@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.platformengineer</groupId>
-    <artifactId>gabs-jedis-client-side-caching-redis</artifactId>
+    <artifactId>jedis-client-side-caching-redis</artifactId>
     <version>0.1.0-gabs</version>
 
     <properties>

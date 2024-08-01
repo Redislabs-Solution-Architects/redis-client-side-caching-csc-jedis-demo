@@ -23,12 +23,33 @@ public class Main {
     private static final Map<String, LatencyResult> LATENCY_RESULTS = new LinkedHashMap<>();
 
     public static void main(String[] args) {
+
+        // Fetch Redis connection details from environment variables, with defaults
+        String redisHost = System.getenv("REDIS_HOST");
+        if (redisHost == null || redisHost.isEmpty()) {
+            redisHost = "localhost";
+        }
+
+        String redisPort = System.getenv("REDIS_PORT");
+        int port = 6379; // Default port
+        if (redisPort != null && !redisPort.isEmpty()) {
+            try {
+                port = Integer.parseInt(redisPort);
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Invalid REDIS_PORT value. Using default port 6379.", e);
+            }
+        }
+
+        String redisPassword = System.getenv("REDIS_PASSWORD");
+
         // Configure the connection
-        HostAndPort node = HostAndPort.from("localhost:6379");
+        HostAndPort node = HostAndPort.from(redisHost + ":" + port);
+        System.out.println("Connecting to Redis at: " + redisHost + ":" + port);
         JedisClientConfig clientConfig = DefaultJedisClientConfig.builder()
                 .resp3()
-                //.password("nhtuquVSLbh2<...>") // Redis password (optional)
+                .password(redisPassword != null && !redisPassword.isEmpty() ? redisPassword : null)
                 .build();
+
 
         // Configure client-side cache
         GuavaClientSideCache clientSideCache = GuavaClientSideCache.builder()
