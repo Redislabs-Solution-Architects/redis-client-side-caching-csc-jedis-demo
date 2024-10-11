@@ -4,13 +4,11 @@ import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import redis.clients.jedis.DefaultJedisClientConfig;
-import redis.clients.jedis.HostAndPort;
-import redis.clients.jedis.JedisClientConfig;
-import redis.clients.jedis.JedisPooled;
-import redis.clients.jedis.csc.GuavaClientSideCache;
+import redis.clients.jedis.*;
+import redis.clients.jedis.csc.CacheConfig;
 import redis.clients.jedis.params.SetParams;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,11 +25,13 @@ public class Main {
         // Fetch Redis connection details from environment variables, with defaults
         String redisHost = System.getenv("REDIS_HOST");
         if (redisHost == null || redisHost.isEmpty()) {
-            redisHost = "localhost";
+            //redisHost = "localhost";
+            redisHost = "redis-18443.c309.us-east-2-1.ec2.redns.redis-cloud.com";
         }
 
         String redisPort = System.getenv("REDIS_PORT");
-        int port = 6379; // Default port
+        //int port = 6379; // Default port
+        int port = 18443; // Redis Cloud Port
         if (redisPort != null && !redisPort.isEmpty()) {
             try {
                 port = Integer.parseInt(redisPort);
@@ -40,7 +40,8 @@ public class Main {
             }
         }
 
-        String redisPassword = System.getenv("REDIS_PASSWORD");
+        //String redisPassword = System.getenv("REDIS_PASSWORD");
+        String redisPassword = "blablabla";
 
         // Configure the connection
         HostAndPort node = HostAndPort.from(redisHost + ":" + port);
@@ -50,30 +51,28 @@ public class Main {
                 .password(redisPassword != null && !redisPassword.isEmpty() ? redisPassword : null)
                 .build();
 
-
-        // Configure client-side cache
-        GuavaClientSideCache clientSideCache = GuavaClientSideCache.builder()
-                .maximumSize(1000)
-                .ttl(100)
+        // Configure client-side cache using CacheConfig (native to Jedis)
+        CacheConfig cacheConfig = CacheConfig.builder()
+                .maxSize(1000) // Cache size
                 .build();
 
-        // Configure pool
+        // Configure connection pool
         GenericObjectPoolConfig<JedisPooled> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setTestWhileIdle(true);
 
-        // Initialize the Jedis client with pool and cache
-        try (JedisPooled client = new JedisPooled(node, clientConfig, clientSideCache)) {
+        // Initialize the Jedis client with pool and native cache
+        try (UnifiedJedis client = new UnifiedJedis(node, clientConfig, cacheConfig)) {
 
-            testSimpleSetGet(client, clientSideCache);
-            testHashOperations(client, clientSideCache);
+            testSimpleSetGet(client);
+            testHashOperations(client);
             testJsonOperations(client);
-            testVariadicAndMultiKeyCommands(client, clientSideCache);
+            testVariadicAndMultiKeyCommands(client);
 
             printLatencySummary();
         }
     }
 
-    private static void testSimpleSetGet(JedisPooled client, GuavaClientSideCache clientSideCache) {
+    private static void testSimpleSetGet(UnifiedJedis client) {
         LOGGER.info("##### Testing simple SET/GET operations... #####");
 
         long startTime = System.nanoTime();
@@ -96,7 +95,7 @@ public class Main {
         summarizeLatency("GET", durationServer, durationCache);
     }
 
-    private static void testHashOperations(JedisPooled client, GuavaClientSideCache clientSideCache) {
+    private static void testHashOperations(UnifiedJedis client) {
         LOGGER.info("##### Testing HASH operations... #####");
 
         Map<String, String> hash = new HashMap<>();
@@ -123,16 +122,9 @@ public class Main {
         LOGGER.info("HGETALL command duration (cache hit): {} ns, result: {}", durationCache, result);
 
         summarizeLatency("HGETALL", durationServer, durationCache);
-
-        // Clear the cache and read again
-        clientSideCache.clear();
-        startTime = System.nanoTime();
-        result = client.hgetAll("person:1");
-        durationServer = System.nanoTime() - startTime;
-        LOGGER.info("HGETALL command duration (after cache clear): {} ns, result: {}", durationServer, result);
     }
 
-    private static void testJsonOperations(JedisPooled client) {
+    private static void testJsonOperations(UnifiedJedis client) {
         LOGGER.info("##### Testing JSON operations... #####");
 
         JSONObject jsonObject = new JSONObject();
@@ -161,7 +153,7 @@ public class Main {
         summarizeLatency("JSON.GET", durationServer, durationCache);
     }
 
-    private static void testVariadicAndMultiKeyCommands(JedisPooled client, GuavaClientSideCache clientSideCache) {
+    private static void testVariadicAndMultiKeyCommands(UnifiedJedis client) {
         LOGGER.info("##### Testing variadic and multi-key commands... #####");
 
         client.set("hola", "mundo");
@@ -179,37 +171,6 @@ public class Main {
         LOGGER.info("MGET command duration (cache hit): {} ns, result: {}", durationCache, result);
 
         summarizeLatency("MGET", durationServer, durationCache);
-
-        // Test set operations
-        client.sadd("coding:be", "Python", "C++");
-        client.sadd("coding:fe", "TypeScript", "Javascript");
-
-        startTime = System.nanoTime();
-        client.smembers("coding:be");
-        durationServer = System.nanoTime() - startTime;
-        LOGGER.info("SMEMBERS command duration (server): {} ns", durationServer);
-
-        // Cache hit
-        startTime = System.nanoTime();
-        client.smembers("coding:be");
-        durationCache = System.nanoTime() - startTime;
-        LOGGER.info("SMEMBERS command duration (cache hit): {} ns", durationCache);
-
-        summarizeLatency("SMEMBERS", durationServer, durationCache);
-
-        // Test SUNION with order dependence
-        startTime = System.nanoTime();
-        client.sunion("coding:be", "coding:fe");
-        durationServer = System.nanoTime() - startTime;
-        LOGGER.info("SUNION command duration (server): {} ns", durationServer);
-
-        // Cache hit
-        startTime = System.nanoTime();
-        client.sunion("coding:be", "coding:fe");
-        durationCache = System.nanoTime() - startTime;
-        LOGGER.info("SUNION command duration (cache hit): {} ns", durationCache);
-
-        summarizeLatency("SUNION", durationServer, durationCache);
     }
 
     private static void summarizeLatency(String operation, long durationServerNs, long durationCacheNs) {
@@ -255,4 +216,3 @@ public class Main {
         }
     }
 }
-
