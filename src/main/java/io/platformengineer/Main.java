@@ -21,7 +21,7 @@ public class Main {
     private static final Map<String, LatencyResult> LATENCY_RESULTS = new LinkedHashMap<>();
 
     public static void main(String[] args) {
-        UnifiedJedis client = null;
+        JedisPooled client = null;
 
         try {
             // Initialize the Redis client with connection pooling and client-side caching
@@ -45,15 +45,15 @@ public class Main {
         }
     }
 
-    private static UnifiedJedis initializeRedisClient() {
+    private static JedisPooled initializeRedisClient() {
         // Fetch Redis connection details from environment variables, with defaults
         String redisHost = System.getenv("REDIS_HOST");
         if (redisHost == null || redisHost.isEmpty()) {
-            redisHost = "redis-18443.c309.us-east-2-1.ec2.redns.redis-cloud.com";
+            redisHost = "localhost";
         }
 
         String redisPort = System.getenv("REDIS_PORT");
-        int port = 18443; // Redis Cloud Port
+        int port = 6379; // Default Redis Port
         if (redisPort != null && !redisPort.isEmpty()) {
             try {
                 port = Integer.parseInt(redisPort);
@@ -63,9 +63,6 @@ public class Main {
         }
 
         String redisPassword = System.getenv("REDIS_PASSWORD");
-        if (redisPassword == null || redisPassword.isEmpty()) {
-            redisPassword = "F3nVuAUrqeNeWyo7hfLphyK8fzWol6Fm"; // Default password for Redis Cloud
-        }
 
         // Configure client-side cache
         CacheConfig cacheConfig = CacheConfig.builder()
@@ -73,7 +70,7 @@ public class Main {
                 .build();
 
         // Configure Redis connection pool
-        GenericObjectPoolConfig<JedisPooled> poolConfig = new GenericObjectPoolConfig<>();
+        GenericObjectPoolConfig<Connection> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setMaxTotal(10); // Maximum number of connections
         poolConfig.setMaxIdle(5);   // Maximum number of idle connections
         poolConfig.setMinIdle(2);   // Minimum number of idle connections
@@ -82,18 +79,29 @@ public class Main {
         poolConfig.setBlockWhenExhausted(true); // Block if connections exhausted
         poolConfig.setMaxWait(Duration.ofSeconds(2)); // Wait time when pool is exhausted
 
-        // Initialize the Jedis client with connection pooling and caching
-        HostAndPort node = HostAndPort.from(redisHost + ":" + port);
-        JedisClientConfig clientConfig = DefaultJedisClientConfig.builder()
-                .resp3()
-                .password(redisPassword)
-                .build();
+        // Initialize JedisPooled with pool and cache
+        HostAndPort node = new HostAndPort(redisHost, port);
+
+        // Build JedisClientConfig without a password if none is provided
+        JedisClientConfig clientConfig;
+        if (redisPassword != null && !redisPassword.isEmpty()) {
+            clientConfig = DefaultJedisClientConfig.builder()
+                    .resp3()
+                    .password(redisPassword)
+                    .build();
+        } else {
+            clientConfig = DefaultJedisClientConfig.builder()
+                    .resp3()
+                    .build();  // No password provided
+        }
 
         LOGGER.info("Connecting to Redis at: {}:{}", redisHost, port);
-        return new UnifiedJedis(node, clientConfig, cacheConfig);
+
+        // Using the constructor that accepts poolConfig and cacheConfig
+        return new JedisPooled(node, clientConfig, cacheConfig, poolConfig);
     }
 
-    private static void testSimpleSetGet(UnifiedJedis client) {
+    private static void testSimpleSetGet(JedisPooled client) {
         LOGGER.info("##### Testing simple SET/GET operations... #####");
 
         long startTime = System.nanoTime();
@@ -116,7 +124,7 @@ public class Main {
         summarizeLatency("GET", durationServer, durationCache);
     }
 
-    private static void testHashOperations(UnifiedJedis client) {
+    private static void testHashOperations(JedisPooled client) {
         LOGGER.info("##### Testing HASH operations... #####");
 
         Map<String, String> hash = new HashMap<>();
@@ -145,7 +153,7 @@ public class Main {
         summarizeLatency("HGETALL", durationServer, durationCache);
     }
 
-    private static void testJsonOperations(UnifiedJedis client) {
+    private static void testJsonOperations(JedisPooled client) {
         LOGGER.info("##### Testing JSON operations... #####");
 
         JSONObject jsonObject = new JSONObject();
@@ -174,7 +182,7 @@ public class Main {
         summarizeLatency("JSON.GET", durationServer, durationCache);
     }
 
-    private static void testVariadicAndMultiKeyCommands(UnifiedJedis client) {
+    private static void testVariadicAndMultiKeyCommands(JedisPooled client) {
         LOGGER.info("##### Testing variadic and multi-key commands... #####");
 
         client.set("hola", "mundo");
