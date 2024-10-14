@@ -1,7 +1,6 @@
-# Jedis Client-Side Caching - GABS IS FIXING THIS CODE TO NOT USE ANY EXTERNAL DEPS OTHER THAN JEDIS
-# UNDER REFACTORING UNTIL END OF OCTOBER 2024 - PLEASE DO NOT USE THE README YET.
+# Jedis Client-Side Caching Demo
 
-This project demonstrates the use of client-side caching with Redis using Jedis and Guava. The example includes performance benchmarks that compare direct Redis access with local cache access, highlighting latency improvements.
+This project demonstrates the use of native client-side caching with Redis using Jedis. The example includes performance benchmarks that compare direct Redis access with local cache access, highlighting latency improvements.
 
 ## Features
 
@@ -18,7 +17,7 @@ These instructions will help you set up and run the project on your local machin
 
 - Java 22 or higher
 - Maven for dependency management
-- Redis running locally on port 6379
+- Redis running locally on port 6379 (or a remote instance, such as your free Redis Cloud)
 
 ## Installation
 
