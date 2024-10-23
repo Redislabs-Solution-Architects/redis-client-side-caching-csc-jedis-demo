@@ -23,6 +23,13 @@ public class Main {
     public static void main(String[] args) {
         JedisPooled client = null;
 
+        LOGGER.info("Java Version: {}", System.getProperty("java.version"));
+        LOGGER.info("Java Vendor: {}", System.getProperty("java.vendor"));
+        LOGGER.info("Java Home: {}", System.getProperty("java.home"));
+        LOGGER.info("JVM Name: {}", System.getProperty("java.vm.name"));
+        LOGGER.info("JVM Version: {}", System.getProperty("java.vm.version"));
+        LOGGER.info("JVM Vendor: {}", System.getProperty("java.vm.vendor"));
+
         try {
             // Initialize the Redis client with connection pooling and client-side caching
             client = initializeRedisClient();
