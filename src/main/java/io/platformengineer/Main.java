@@ -6,13 +6,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.*;
 import redis.clients.jedis.csc.CacheConfig;
+import redis.clients.jedis.csc.Cacheable;
+import redis.clients.jedis.csc.DefaultCacheable;
 import redis.clients.jedis.params.SetParams;
+import redis.clients.jedis.commands.ProtocolCommand;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Main {
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
@@ -21,6 +26,7 @@ public class Main {
     private static final Map<String, LatencyResult> LATENCY_RESULTS = new LinkedHashMap<>();
 
     public static void main(String[] args) {
+
         JedisPooled client = null;
 
         LOGGER.info("Java Version: {}", System.getProperty("java.version"));
@@ -33,6 +39,9 @@ public class Main {
         try {
             // Initialize the Redis client with connection pooling and client-side caching
             client = initializeRedisClient();
+
+            // Run the demo for cache performance
+            demoCachePerformance(client);
 
             // Run Redis command tests
             testSimpleSetGet(client);
@@ -71,9 +80,11 @@ public class Main {
 
         String redisPassword = System.getenv("REDIS_PASSWORD");
 
-        // Configure client-side cache
+        // Configure client-side cache with custom Cacheable (you can choose either)
         CacheConfig cacheConfig = CacheConfig.builder()
                 .maxSize(1000) // Cache size
+                .cacheable(new PrefixCacheable(Set.of("foo", "user", "session", "person", "hello"))) // Cache based on multiple prefixes - note that I only cache one of the keys from mget
+                //.cacheable(new SpecificKeysCacheable(Set.of("user:1001", "user:1002", "foo", "person:1", "session:1", "hola"))) // Uncomment for specific keys caching
                 .build();
 
         // Configure Redis connection pool
@@ -250,5 +261,120 @@ public class Main {
             this.improvement = improvement;
             this.percentageImprovement = percentageImprovement;
         }
+    }
+
+
+    // Cacheable implementation for multiple prefix-based caching
+    public static class PrefixCacheable implements Cacheable {
+        private final Set<String> prefixes;
+
+        // Accept a set of prefixes instead of a single prefix
+        public PrefixCacheable(Set<String> prefixes) {
+            this.prefixes = prefixes;
+        }
+
+        @Override
+        public boolean isCacheable(ProtocolCommand command, List<Object> keys) {
+            // Check if the command is cacheable by default
+            if (!DefaultCacheable.isDefaultCacheableCommand(command)) {
+                return false;  // Exit immediately if it's not a cacheable command
+            }
+
+            // Custom logic: Check if any of the key(s) start with any of the given prefixes
+            for (Object key : keys) {
+                for (String prefix : prefixes) {
+                    if (key.toString().startsWith(prefix)) {
+                        return true;  // Cache if the key matches any of the prefixes
+                    }
+                }
+            }
+            return false;  // Otherwise, don't cache
+        }
+    }
+
+    // Cacheable implementation for specific keys
+    public static class SpecificKeysCacheable implements Cacheable {
+        private final Set<String> cacheableKeys;
+
+        public SpecificKeysCacheable(Set<String> keysToCache) {
+            this.cacheableKeys = new HashSet<>(keysToCache);
+        }
+
+        @Override
+        public boolean isCacheable(ProtocolCommand command, List<Object> keys) {
+            // Check if the command is cacheable by default
+            if (!DefaultCacheable.isDefaultCacheableCommand(command)) {
+                return false;  // Exit immediately if it's not a cacheable command
+            }
+
+            // Custom logic: Check if the key is in the set of cacheable keys
+            for (Object key : keys) {
+                if (cacheableKeys.contains(key.toString())) {
+                    return true;  // Cache if the key is in the set
+                }
+            }
+            return false;  // Otherwise, don't cache
+        }
+    }
+
+    private static void demoCachePerformance(JedisPooled client) {
+        LOGGER.info("\n\n##### Demo: Cacheable (user:) vs Non-cacheable (gabs:) keys #####\n");
+
+        // Set cacheable keys
+        client.set("user:1001", "data1", new SetParams().ex(60)); // Cache with expiration
+        //client.set("user:1002", "data2", new SetParams().ex(60)); // Cache with expiration
+
+        // Set non-cacheable keys
+        client.set("gabs:1001", "data1", new SetParams().ex(60)); // No cache
+        //client.set("gabs:1002", "data2", new SetParams().ex(60)); // No cache
+
+        // Cacheable keys (user:)
+        LOGGER.info("### Cacheable Keys (user: prefix) ###");
+
+        long startTime = System.nanoTime();
+        client.get("user:1001");
+        long cacheableFirstReadTime = System.nanoTime() - startTime;
+        LOGGER.info("First read (from Redis server) [user:1001]: {} ns", cacheableFirstReadTime);
+
+        startTime = System.nanoTime();
+        client.get("user:1001");
+        long cacheableSecondReadTime = System.nanoTime() - startTime;
+        LOGGER.info("Second read (from CSC cache) [user:1001]: {} ns", cacheableSecondReadTime);
+
+        // Calculate improvement
+        long cacheableLatencyDifference = cacheableFirstReadTime - cacheableSecondReadTime;
+        double cacheableImprovementRatio = ((double) cacheableLatencyDifference / cacheableFirstReadTime) * 100;
+
+        LOGGER.info("Improvement for user:1001 (1st vs 2nd read): {} ns ({}% improvement)\n",
+                cacheableLatencyDifference, String.format("%.2f", cacheableImprovementRatio));
+
+        // Non-cacheable keys (gabs:)
+        LOGGER.info("### Non-cacheable Keys (gabs: prefix) ###");
+
+        startTime = System.nanoTime();
+        client.get("gabs:1001");
+        long nonCacheableFirstReadTime = System.nanoTime() - startTime;
+        LOGGER.info("First read (from Redis server) [gabs:1001]: {} ns", nonCacheableFirstReadTime);
+
+        startTime = System.nanoTime();
+        client.get("gabs:1001");
+        long nonCacheableSecondReadTime = System.nanoTime() - startTime;
+        LOGGER.info("Second read (from Redis server) [gabs:1001]: {} ns", nonCacheableSecondReadTime);
+
+        // Calculate lack of improvement
+        long nonCacheableLatencyDifference = nonCacheableFirstReadTime - nonCacheableSecondReadTime;
+        double nonCacheableImprovementRatio = ((double) nonCacheableLatencyDifference / nonCacheableFirstReadTime) * 100;
+
+        LOGGER.info("Improvement for gabs:1001 (1st vs 2nd read): {} ns ({}% improvement)\n",
+                nonCacheableLatencyDifference, String.format("%.2f", nonCacheableImprovementRatio));
+
+        // Visual comparison of improvement
+        LOGGER.info("### Summary - in default demo, the gabs: keys are not being cached ###");
+        LOGGER.info("| Key Prefix  | 1st Read Latency (ns) | 2nd Read Latency (ns) | Improvement (ns) | Improvement (%) |");
+        LOGGER.info("|-------------|-----------------------|-----------------------|------------------|-----------------|");
+        LOGGER.info("| user:       | {} ns                 | {} ns                 | {} ns            | {}%             |",
+                cacheableFirstReadTime, cacheableSecondReadTime, cacheableLatencyDifference, String.format("%.2f", cacheableImprovementRatio));
+        LOGGER.info("| gabs:       | {} ns                 | {} ns                 | {} ns            | {}%             |",
+                nonCacheableFirstReadTime, nonCacheableSecondReadTime, nonCacheableLatencyDifference, String.format("%.2f", nonCacheableImprovementRatio));
     }
 }
