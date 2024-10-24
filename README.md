@@ -164,7 +164,7 @@ docker run --rm \
   -e REDIS_HOST=host.docker.internal \  # Set the Redis host (default: localhost)
   -e REDIS_PORT=6379 \  # Set the Redis port (default: 6379)
   [-e REDIS_PASSWORD=your-password] \  # Optional: Set the Redis password if required
-  gacerioni/jedis-client-side-caching-redis:0.1.0-gabs
+  gacerioni/jedis-client-side-caching-redis:1.0.1
 ```
 
 ## Key Components
