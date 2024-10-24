@@ -60,6 +60,70 @@ INFO  GET command duration (cache hit): 5000 ns, value: bar
 INFO  GET operation latency improvement: 45000 ns (90.00%)
 ```
 
+## Custom Cacheable Logic
+
+### Overview
+
+This project demonstrates how to use client-side caching in Redis with Jedis. We’ve implemented a custom caching strategy that allows for flexible control over which keys get cached. The caching logic supports both:
+
+1. **Specific key-based caching**: Where only a predefined set of keys are cached.
+2. **Prefix-based caching**: Where keys starting with specific prefixes are cached.
+
+### Custom Cacheable Logic
+
+To customize which keys get cached, we’ve extended the default Cacheable interface and implemented two strategies:
+
+1. **SpecificKeysCacheable**: Caches a predefined set of keys.
+2. **PrefixCacheable**: Caches keys that start with specific prefixes. The PrefixCacheable implementation can handle multiple prefixes, making it easy to manage and configure.
+
+#### Specific Key Caching Example
+
+In this method, you can specify exact keys that should be cached. For instance:
+
+```java
+CacheConfig cacheConfig = CacheConfig.builder()
+    .maxSize(1000) // Cache size
+    .cacheable(new SpecificKeysCacheable(Set.of("user:1001", "user:1002", "foo", "person:1", "session:1", "hola"))) // Cache only specific keys
+    .build();
+```
+
+In this example, only the keys "user:1001", "user:1002", "foo", "person:1", "session:1", and "hola" will be cached.
+
+#### Prefix-Based Caching Example
+
+The **PrefixCacheable** class allows you to cache any key that starts with one or more specified prefixes.\
+This is particularly useful if you have groups of keys that follow a common naming pattern.
+
+```java
+CacheConfig cacheConfig = CacheConfig.builder()
+    .maxSize(1000) // Cache size
+    .cacheable(new PrefixCacheable(Set.of("foo", "user", "session", "person"))) // Cache keys with any of these prefixes
+    .build();
+```
+
+In this example, **all keys** starting with "foo", "user", "session", or "person" will be cached.
+
+### How It Works
+1. **Specific Key Caching**: Checks each key in the Redis command and caches it only if it matches a predefined list of keys.
+2. **Prefix-Based Caching**: Checks each key in the Redis command and caches it if the key starts with any of the specified prefixes.
+
+
+### Why Use Custom Cacheable Logic?
+
+First of all, I deliberately decided to respect the default logic to only cache given **commands**, that are related to read operations in general.\
+It is a default set that is going to be maintained by Jedis, so it feels safe to use it on our interface implementation.
+
+So, before I evaluate the key prefix or match, I check if the command is cacheable.
+
+- Flexibility: You can precisely control which keys are cached based on your application needs.
+- Performance Optimization: Cache only the keys that benefit your application, minimizing memory usage while maximizing performance.
+
+### Extending the Logic
+
+Feel free to extend the logic to fit your use case. You can easily modify the `SpecificKeysCacheable` or `PrefixCacheable` classes to handle more complex conditions, such as caching based on suffixes, patterns, or specific data types.
+
+This section can easily be added to your README to give your audience a clear understanding of what you’ve implemented and how they can extend it. Let me know if you’d like to adjust or add anything!
+
 ## Docker Image
 
 The Docker image is available on Docker Hub and can be run with customizable Redis connection details.
