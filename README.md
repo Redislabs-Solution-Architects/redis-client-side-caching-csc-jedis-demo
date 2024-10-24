@@ -8,6 +8,7 @@ This project demonstrates the use of client-side caching with Redis using Jedis.
 - Hash Operations: Demonstrate caching with Redis hash data structures.
 - JSON Operations: Store and retrieve JSON data, showcasing caching benefits.
 - Variadic and Multi-Key Commands: Evaluate performance for multi-key operations like MGET, SMEMBERS, and SUNION.
+- Then, we see a very easy way to implement our own CSC rules, by implementing the Cacheable interface from Jedis.
 
 ### You can use these env vars to connect to your own Redis instance
 
