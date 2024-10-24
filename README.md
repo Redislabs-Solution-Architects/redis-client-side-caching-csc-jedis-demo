@@ -9,6 +9,15 @@ This project demonstrates the use of client-side caching with Redis using Jedis.
 - JSON Operations: Store and retrieve JSON data, showcasing caching benefits.
 - Variadic and Multi-Key Commands: Evaluate performance for multi-key operations like MGET, SMEMBERS, and SUNION.
 
+### You can use these env vars to connect to your own Redis instance
+
+```bash
+# Set the environment variables and run the jar
+export REDIS_HOST=your-redis-cloud-host
+export REDIS_PORT=your-redis-cloud-port
+export REDIS_PASSWORD=your-redis-password
+```
+
 ## Getting Started
 
 These instructions will help you set up and run the project on your local machine for development and testing purposes.
@@ -44,7 +53,15 @@ mvn exec:java -Dexec.mainClass="io.platformengineer.Main"
 If you want to run the jar itself (I like this because it’s easy for “dockerization” later):
 
 ```bash
+# Build the project
 mvn clean package
+
+# Set the environment variables and run the jar
+export REDIS_HOST=your-redis-cloud-host
+export REDIS_PORT=your-redis-cloud-port
+export REDIS_PASSWORD=your-redis-password
+
+# Run the jar with the environment variables
 java -jar target/jedis-client-side-caching-redis-0.1.0-gabs-jar-with-dependencies.jar
 ```
 
